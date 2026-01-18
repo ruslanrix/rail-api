@@ -14,12 +14,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Install Poetry
-        run: pipx install poetry
+        run: pipx install poetry==2.2.1
+
+      - name: Cache Poetry + venv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: ${{ runner.os }}-py${{ steps.python.outputs.python-version }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ steps.python.outputs.python-version }}-poetry-
 
       - name: Install deps
-        run: poetry install --no-interaction --no-ansi
+        run: poetry install --no-interaction --no-ansi --with dev
 
       - name: Lint
         run: poetry run ruff check .
@@ -28,4 +39,4 @@ jobs:
         run: poetry run ruff format --check .
 
       - name: Tests
-        run: poetry run pytest
+        run: poetry run pytest -q
