@@ -21,3 +21,8 @@ def add(a: int, b: int):
 @app.get("/mul")
 def mul(a: int, b: int):
     return {"result": a * b}
+
+
+@app.get("/sub")
+def sub(a: int, b: int):
+    return {"result": a - b}
