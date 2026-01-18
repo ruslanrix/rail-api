@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Block committing secrets/keys (even if added with -f)
+if git diff --cached --name-only | grep -qE '(^|/)(\.env|\.env\..*|secrets[^/]*\.json|[^/]*\.enc\.json|[^/]*\.(pem|key|p12)|id_rsa|id_ed25519)$'; then
+  echo "ERROR: Refusing to commit secrets/keys. Remove them from staging."
+  echo "Hint: git restore --staged <file>"
+  exit 1
+fi

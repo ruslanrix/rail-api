@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+
+.DS_Store
+
+.env
+.env.*
+!.env.example
+
+# Secrets / keys (never commit)
+secrets*.json
+*.enc.json
+*.pem
+*.key
+*.p12
+id_rsa
+id_ed25519
