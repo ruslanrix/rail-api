@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi import HTTPException
 
 app = FastAPI(title="hello-api")
 
@@ -26,3 +27,10 @@ def mul(a: int, b: int):
 @app.get("/sub")
 def sub(a: int, b: int):
     return {"result": a - b}
+
+
+@app.get("/div")
+def div(a: int, b: int):
+    if b == 0:
+        raise HTTPException(status_code=400, detail="Division by zero")
+    return {"result": a / b}
