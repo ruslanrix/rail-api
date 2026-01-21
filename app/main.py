@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
 
-from app.schemas import HTTPErrorResponse, HealthResponse, ResultResponse
+from app.schemas import ErrorResponse, HealthResponse, ResultResponse
 
 app = FastAPI(title="hello-api")
 
 
-@app.get("/", response_model=dict[str, str])
+@app.get("/", response_model=dict)
 def root():
     return {"message": "hello"}
 
@@ -33,7 +33,7 @@ def sub(a: int, b: int):
 @app.get(
     "/div",
     response_model=ResultResponse,
-    responses={400: {"model": HTTPErrorResponse}},
+    responses={400: {"model": ErrorResponse}},
 )
 def div(a: int, b: int):
     if b == 0:
