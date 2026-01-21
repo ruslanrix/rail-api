@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
 
-from app.schemas import ErrorResponse, HealthResponse, ResultResponse
+from app.schemas import HTTPErrorResponse, HealthResponse, ResultResponse
 
 app = FastAPI(title="hello-api")
 
 
-@app.get("/", response_model=dict)
+@app.get("/", response_model=dict[str, str])
 def root():
     return {"message": "hello"}
 
@@ -33,10 +33,9 @@ def sub(a: int, b: int):
 @app.get(
     "/div",
     response_model=ResultResponse,
-    responses={400: {"model": ErrorResponse}},
+    responses={400: {"model": HTTPErrorResponse}},
 )
 def div(a: int, b: int):
     if b == 0:
-        # Важно: FastAPI отдаст {"detail": "..."} — мы это документируем через ErrorResponse
         raise HTTPException(status_code=400, detail="Division by zero")
     return {"result": a / b}
