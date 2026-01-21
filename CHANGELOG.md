@@ -8,3 +8,4 @@
 - Tests (pytest) and lint/format via ruff
 - CI workflow (GitHub Actions)
 - Railway deploy support (Procfile / Dockerfile)
+- /div endpoint with validation and tests
