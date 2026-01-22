@@ -5,6 +5,8 @@
 ## [0.1.2] - 2026-01-21
 ### Added
 - /div endpoint with validation and tests
+- Pydantic response models wired to endpoints
+- Align 400 error schema with FastAPI payload
 
 ## [0.1.1] - 2026-01-20
 ### Added
