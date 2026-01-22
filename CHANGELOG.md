@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-01-22
+### Added
+- Async endpoints: GET /sleep and POST /notify with validation and tests
+
 ## [0.1.2] - 2026-01-21
 ### Added
 - /div endpoint with validation and tests
