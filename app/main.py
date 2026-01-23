@@ -1,14 +1,16 @@
 import asyncio
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 
+from app.auth import auth_basic, create_access_token, require_auth, verify_basic
 from app.schemas import (
     ErrorResponse,
     HealthResponse,
-    ResultResponse,
-    SleepResponse,
     NotifyRequest,
     OkResponse,
+    ResultResponse,
+    SleepResponse,
+    TokenResponse,
 )
 
 app = FastAPI(title="hello-api")
@@ -65,7 +67,13 @@ async def sleep(seconds: float = 1):
     return {"slept": s}
 
 
-@app.post("/notify", response_model=OkResponse)
+@app.post("/token", response_model=TokenResponse, responses={401: {"model": ErrorResponse}})
+def token(credentials=Depends(auth_basic)):
+    username = verify_basic(credentials)
+    return {"access_token": create_access_token(username), "token_type": "bearer"}
+
+
+@app.post("/notify", response_model=OkResponse, dependencies=[Depends(require_auth)])
 async def notify(payload: NotifyRequest):
     # Validation is handled by Pydantic (message length 1..200)
     _ = payload.message

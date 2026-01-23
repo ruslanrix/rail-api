@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
-
 from pydantic import Field
 
 
@@ -27,3 +26,8 @@ class NotifyRequest(BaseModel):
 
 class OkResponse(BaseModel):
     ok: bool
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
