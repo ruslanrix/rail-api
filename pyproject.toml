@@ -37,4 +37,3 @@ quote-style = "double"
 
 [tool.poetry]
 package-mode = false
-
