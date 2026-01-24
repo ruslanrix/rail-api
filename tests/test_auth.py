@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
 from datetime import datetime, timedelta, timezone
-
-import jwt
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,6 +14,24 @@ import app.main as main_mod
 @pytest.fixture()
 def client():
     return TestClient(main_mod.app)
+
+
+def _b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("utf-8")
+
+
+def _sign(message: bytes, secret: str) -> str:
+    digest = hmac.new(secret.encode("utf-8"), message, hashlib.sha256).digest()
+    return _b64url_encode(digest)
+
+
+def _encode_jwt(payload: dict, secret: str) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    header_b64 = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+    signature = _sign(signing_input, secret)
+    return f"{header_b64}.{payload_b64}.{signature}"
 
 
 def test_basic_required(client: TestClient, monkeypatch: pytest.MonkeyPatch):
@@ -56,8 +76,11 @@ def test_jwt_valid(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AUTH_MODE", "jwt")
     monkeypatch.setenv("JWT_SECRET", "secret")
 
-    payload = {"sub": "demo", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)}
-    token = jwt.encode(payload, "secret", algorithm="HS256")
+    payload = {
+        "sub": "demo",
+        "exp": int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp()),
+    }
+    token = _encode_jwt(payload, "secret")
 
     r = client.post(
         "/notify",
@@ -84,8 +107,11 @@ def test_jwt_expired(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AUTH_MODE", "jwt")
     monkeypatch.setenv("JWT_SECRET", "secret")
 
-    payload = {"sub": "demo", "exp": datetime.now(timezone.utc) - timedelta(minutes=1)}
-    token = jwt.encode(payload, "secret", algorithm="HS256")
+    payload = {
+        "sub": "demo",
+        "exp": int((datetime.now(timezone.utc) - timedelta(minutes=1)).timestamp()),
+    }
+    token = _encode_jwt(payload, "secret")
 
     r = client.post(
         "/notify",

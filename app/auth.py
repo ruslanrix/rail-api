@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBasic,
@@ -82,12 +85,31 @@ def verify_basic(credentials: HTTPBasicCredentials | None) -> str:
     return credentials.username
 
 
+def _b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("utf-8")
+
+
+def _b64url_decode(data: str) -> bytes:
+    padding = "=" * (-len(data) % 4)
+    return base64.urlsafe_b64decode(data + padding)
+
+
+def _sign(message: bytes, secret: str) -> str:
+    digest = hmac.new(secret.encode("utf-8"), message, hashlib.sha256).digest()
+    return _b64url_encode(digest)
+
+
 def create_access_token(subject: str) -> str:
     secret = get_jwt_secret()
     ttl_seconds = get_jwt_ttl_seconds()
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
-    payload = {"sub": subject, "exp": expires_at}
-    return jwt.encode(payload, secret, algorithm="HS256")
+    payload = {"sub": subject, "exp": int(expires_at.timestamp())}
+    header = {"alg": "HS256", "typ": "JWT"}
+    header_b64 = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+    signature = _sign(signing_input, secret)
+    return f"{header_b64}.{payload_b64}.{signature}"
 
 
 def verify_bearer(credentials: HTTPAuthorizationCredentials | None) -> dict:
@@ -98,33 +120,58 @@ def verify_bearer(credentials: HTTPAuthorizationCredentials | None) -> dict:
             headers={"WWW-Authenticate": "Bearer"},
         )
     secret = get_jwt_secret()
-    try:
-        return jwt.decode(credentials.credentials, secret, algorithms=["HS256"])
-    except jwt.ExpiredSignatureError as exc:
+    token = credentials.credentials
+    parts = token.split(".")
+    if len(parts) != 3:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired",
+            detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
-    except jwt.InvalidTokenError as exc:
+        )
+    header_b64, payload_b64, signature = parts
+    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+    expected_sig = _sign(signing_input, secret)
+    if not secrets.compare_digest(signature, expected_sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        payload_raw = _b64url_decode(payload_b64)
+        payload = json.loads(payload_raw)
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+    exp = payload.get("exp")
+    if exp is None or not isinstance(exp, int):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if datetime.now(timezone.utc).timestamp() >= exp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return payload
 
 
-def require_auth(
-    basic_credentials: HTTPBasicCredentials | None = Depends(auth_basic),
-    bearer_credentials: HTTPAuthorizationCredentials | None = Depends(auth_bearer),
-) -> None:
+async def require_auth(request: Request) -> None:
     mode = get_auth_mode()
     if mode == "none":
         return None
     if mode == "basic":
-        verify_basic(basic_credentials)
+        credentials = await auth_basic(request)
+        verify_basic(credentials)
         return None
     if mode == "jwt":
-        verify_bearer(bearer_credentials)
+        credentials = await auth_bearer(request)
+        verify_bearer(credentials)
         return None
     return None
