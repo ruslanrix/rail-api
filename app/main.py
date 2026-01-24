@@ -1,8 +1,17 @@
 import asyncio
+import logging
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 
 from app.auth import auth_basic, create_access_token, require_auth, verify_basic
+from app.observability import (
+    configure_logging,
+    get_or_create_request_id,
+    metrics,
+    now,
+    request_id_var,
+)
 from app.schemas import (
     ErrorResponse,
     HealthResponse,
@@ -13,7 +22,70 @@ from app.schemas import (
     TokenResponse,
 )
 
+configure_logging()
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="hello-api")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    request_id = getattr(request.state, "request_id", request_id_var.get("-"))
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+        headers={"X-Request-ID": request_id},
+    )
+
+
+@app.middleware("http")
+async def observability_middleware(request: Request, call_next):
+    request_id = get_or_create_request_id(request.headers.get("X-Request-ID"))
+    request.state.request_id = request_id
+    token = request_id_var.set(request_id)
+
+    start = now()
+    response: Response | None = None
+    status_code = 500
+    duration_s = 0.0
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    except Exception:
+        duration_s = now() - start
+        metrics.record(
+            method=request.method,
+            path=request.url.path,
+            status=status_code,
+            duration_s=duration_s,
+        )
+        logger.exception(
+            "request failed method=%s path=%s status=%s duration_ms=%.2f",
+            request.method,
+            request.url.path,
+            status_code,
+            duration_s * 1000,
+        )
+        raise
+    finally:
+        if response is not None:
+            response.headers["X-Request-ID"] = request_id
+            duration_s = now() - start
+            metrics.record(
+                method=request.method,
+                path=request.url.path,
+                status=status_code,
+                duration_s=duration_s,
+            )
+            logger.info(
+                "request complete method=%s path=%s status=%s duration_ms=%.2f",
+                request.method,
+                request.url.path,
+                status_code,
+                duration_s * 1000,
+            )
+        request_id_var.reset(token)
 
 
 @app.get("/", response_model=dict)
@@ -24,6 +96,14 @@ def root():
 @app.get("/health", response_model=HealthResponse)
 def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics", response_model=None)
+def metrics_endpoint():
+    return Response(
+        content=metrics.render_prometheus(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @app.get("/add", response_model=ResultResponse)

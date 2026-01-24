@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Request ID middleware with structured per-request logs
+- Prometheus-style `GET /metrics` endpoint
+- Observability tests for request IDs and metrics
 
 ## [0.1.4] - 2026-01-23
 ### Added
