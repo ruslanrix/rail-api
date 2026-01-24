@@ -1,8 +1,16 @@
 import asyncio
+import logging
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 
 from app.auth import auth_basic, create_access_token, require_auth, verify_basic
+from app.observability import (
+    configure_logging,
+    get_or_create_request_id,
+    metrics,
+    now,
+    request_id_var,
+)
 from app.schemas import (
     ErrorResponse,
     HealthResponse,
@@ -13,7 +21,41 @@ from app.schemas import (
     TokenResponse,
 )
 
+configure_logging()
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="hello-api")
+
+
+@app.middleware("http")
+async def observability_middleware(request: Request, call_next):
+    request_id = get_or_create_request_id(request.headers.get("X-Request-ID"))
+    request.state.request_id = request_id
+    token = request_id_var.set(request_id)
+
+    start = now()
+    try:
+        response = await call_next(request)
+        duration_s = now() - start
+
+        response.headers["X-Request-ID"] = request_id
+
+        metrics.record(
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            duration_s=duration_s,
+        )
+        logger.info(
+            "request complete method=%s path=%s status=%s duration_ms=%.2f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_s * 1000,
+        )
+        return response
+    finally:
+        request_id_var.reset(token)
 
 
 @app.get("/", response_model=dict)
@@ -24,6 +66,14 @@ def root():
 @app.get("/health", response_model=HealthResponse)
 def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics", response_model=None)
+def metrics_endpoint():
+    return Response(
+        content=metrics.render_prometheus(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @app.get("/add", response_model=ResultResponse)
