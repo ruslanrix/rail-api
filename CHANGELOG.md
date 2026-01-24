@@ -1,10 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+
+## [0.1.4] - 2026-01-23
 ### Added
-- Module I: auth configuration via env for basic/JWT modes
-- Module I: POST /token for issuing JWT access tokens
-- Module I: auth protection and tests for POST /notify
+- Auth for POST /notify (basic/jwt)
+- /token endpoint
+- Auth tests + .env.example
 
 ## [0.1.3] - 2026-01-22
 ### Added
