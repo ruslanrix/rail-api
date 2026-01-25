@@ -16,3 +16,6 @@ secrets*.json
 *.p12
 id_rsa
 id_ed25519
+
+# prompts: keep only service-specific prompts; ignore module specs synced from templates
+/prompts/module-*.md
