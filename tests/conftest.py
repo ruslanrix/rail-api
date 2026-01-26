@@ -10,8 +10,6 @@ AUTH_ENV_KEYS = [
 
 
 @pytest.fixture(autouse=True)
-def _default_auth_mode_none(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Make tests deterministic: do not depend on developer shell/.env
-    monkeypatch.setenv("AUTH_MODE", "none")
-    for key in AUTH_ENV_KEYS[1:]:
+def _clear_auth_env(monkeypatch: pytest.MonkeyPatch):
+    for key in AUTH_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)

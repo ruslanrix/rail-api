@@ -1,4 +1,6 @@
 from __future__ import annotations
+from app.schemas import ErrorResponse
+from secrets import compare_digest
 
 import base64
 import hashlib
@@ -8,7 +10,7 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, status, Depends
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBasic,
@@ -175,3 +177,40 @@ async def require_auth(request: Request) -> None:
         verify_bearer(credentials)
         return None
     return None
+
+
+# FastAPI responses schema for auth-protected endpoints
+auth_error_responses = {
+    401: {"model": ErrorResponse},
+}
+
+
+_basic_auth_scheme = HTTPBasic(auto_error=False)
+
+
+def require_basic_auth(
+    credentials: HTTPBasicCredentials | None = Depends(_basic_auth_scheme),
+) -> str:
+    """Require Basic auth regardless of AUTH_MODE (used by /token)."""
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    username = os.getenv("BASIC_USER", "")
+    password = os.getenv("BASIC_PASS", "")
+    valid = (
+        username
+        and password
+        and compare_digest(credentials.username, username)
+        and compare_digest(credentials.password, password)
+    )
+    if not valid:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
