@@ -6,6 +6,7 @@ import logging
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from app.core.settings import get_settings
 from app.api.routes import router
 from app.observability import (
     configure_logging,
@@ -15,7 +16,8 @@ from app.observability import (
     request_id_var,
 )
 
-app = FastAPI(title="hello-api")
+settings = get_settings()
+app = FastAPI(title=settings.app_name)
 
 configure_logging()
 logger = logging.getLogger(__name__)
