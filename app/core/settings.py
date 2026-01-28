@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     - Tests rely on get_settings.cache_clear().
     """
 
+    # External integrations (Module N)
+    external_base_url: str = ""
+    external_timeout_s: float = 3.0
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # App

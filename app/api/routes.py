@@ -19,6 +19,13 @@ from app.schemas import (
     TokenResponse,
 )
 
+from app.core.settings import get_settings
+from app.integrations.external_client import (
+    ExternalClient,
+    ExternalClientConfig,
+    ExternalUpstreamError,
+)
+
 router = APIRouter()
 
 
@@ -82,3 +89,20 @@ def token(subject: str = Depends(require_basic_auth)):
 def debug_request_id(request: Request):
     # Convenience endpoint for local verification (can be removed later)
     return {"request_id": request.headers.get("x-request-id") or str(uuid4())}
+
+
+@router.get("/external/ping")
+async def external_ping():
+    s = get_settings()
+    cfg = ExternalClientConfig(
+        base_url=s.external_base_url,
+        timeout_s=float(s.external_timeout_s),
+    )
+    client = ExternalClient(cfg)
+
+    try:
+        data = await client.ping()
+    except ExternalUpstreamError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+    return {"ok": True, "data": data}
