@@ -45,7 +45,7 @@ class ExternalClient:
 
     async def _ping_with(self, client: httpx.AsyncClient) -> dict[str, Any]:
         try:
-            r = await client.get("/ping")
+            r = await client.get("ping")
         except httpx.TimeoutException as e:
             raise ExternalUpstreamError("External request timed out") from e
         except httpx.HTTPError as e:
