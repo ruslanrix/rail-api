@@ -5,6 +5,9 @@
 - Request ID middleware with structured per-request logs
 - Prometheus-style `GET /metrics` endpoint
 - Observability tests for request IDs and metrics
+- Alembic migrations + initial schema (Module M)
+- External integrations httpx client + timeout/error tests (Module N)
+- Background job for /notify + scheduling test (Module O)
 
 ## [0.1.4] - 2026-01-23
 ### Added
