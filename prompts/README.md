@@ -11,13 +11,13 @@ These prompts are the “contracts” for agents (Codex/Claude): follow the goal
 ### Modules (specs)
 - `module-i.md` — Module I: Auth & security basics (protect `/notify`, Basic + JWT, `/token`, env config, tests).
 - `module-j.md` — Module J: Observability (logging/metrics/tracing basics) + verification checklist.
-
-### Next modules (planned)
 - `module-k.md` — Module K: App structure & routers
 - `module-l.md` — Module L: Config & settings (env-first)
 - `module-m.md` — Module M: Persistence minimal (DB + migrations)
 - `module-n.md` — Module N: External integrations (HTTP client)
 - `module-o.md` — Module O: Background jobs
+
+### Next modules (planned)
 - `module-p.md` — Module P: Testing level-up
 - `module-q.md` — Module Q: Deployment hardening
 - `module-r.md` — Module R: Observability+
