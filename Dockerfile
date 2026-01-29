@@ -11,10 +11,12 @@ RUN pip install --no-cache-dir poetry
 # deps first (лучше кэш)
 COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false \
- && poetry install --no-interaction --no-ansi --no-root
+    && poetry install --no-interaction --no-ansi --no-root
 
 # app code
 COPY . .
+
+EXPOSE 8000
 
 # Railway/Fly/etc обычно дают PORT
 CMD ["sh", "-c", "poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
