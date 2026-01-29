@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
 from app.auth import (
     auth_error_responses,
@@ -10,6 +10,7 @@ from app.auth import (
     require_auth,
     require_basic_auth,
 )
+from app.notification import deliver_notification
 from app.schemas import (
     ErrorResponse,
     HealthResponse,
@@ -70,8 +71,14 @@ def div(a: int, b: int):
 
 
 @router.post("/notify", response_model=OkResponse)
-async def notify(payload: NotifyRequest, _: str | None = Depends(require_auth)):
-    _ = payload.message
+async def notify(
+    payload: NotifyRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    _: str | None = Depends(require_auth),
+):
+    request_id = request.headers.get("x-request-id")
+    background_tasks.add_task(deliver_notification, payload.message, request_id)
     return {"ok": True}
 
 

@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.core.settings import get_settings
+from app.main import app
 
 # Keep list explicit so tests are deterministic.
 _ENV_KEYS_TO_CLEAR = [
@@ -16,6 +18,8 @@ _ENV_KEYS_TO_CLEAR = [
     "JWT_TTL_SECONDS",
     "DATABASE_URL",
     "DB_ECHO",
+    "EXTERNAL_BASE_URL",
+    "EXTERNAL_TIMEOUT_S",
 ]
 
 
@@ -34,3 +38,8 @@ def _clear_settings_cache():
     get_settings.cache_clear()
     for k in _ENV_KEYS_TO_CLEAR:
         os.environ.pop(k, None)
+
+
+@pytest.fixture()
+def client() -> TestClient:
+    return TestClient(app)
