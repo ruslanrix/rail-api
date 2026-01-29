@@ -30,6 +30,10 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+  "contract: contract tests (response schema validation)",
+  "integration: integration-style tests (db/background tasks)",
+]
 
 [tool.ruff]
 line-length = 100
