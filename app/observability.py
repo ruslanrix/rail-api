@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextvars
 import logging
+import os
 import sys
 import threading
 import time
@@ -9,6 +10,11 @@ import uuid
 from collections import defaultdict
 
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
+
+
+def obs_enabled() -> bool:
+    v = os.getenv("OBS_ENABLED", "")
+    return v.lower() in {"1", "true", "yes", "on"}
 
 
 class RequestIdFilter(logging.Filter):
@@ -23,6 +29,10 @@ _logging_configured = False
 def configure_logging() -> None:
     global _logging_configured
     if _logging_configured:
+        return
+
+    # observability optional (off by default)
+    if not obs_enabled():
         return
 
     root_logger = logging.getLogger()
@@ -49,6 +59,9 @@ class Metrics:
         self._duration_count: dict[tuple[str, str], int] = defaultdict(int)
 
     def record(self, *, method: str, path: str, status: int, duration_s: float) -> None:
+        if not obs_enabled():
+            return
+
         key = (method, path, str(status))
         duration_key = (method, path)
         with self._lock:
