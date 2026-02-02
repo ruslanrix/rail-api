@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     - Tests rely on get_settings.cache_clear().
     """
 
+    cors_allow_origins: str = ""  # CSV: https://a.com,https://b.com
+    cors_allow_origin_regex: str = ""  # опционально, если хочешь regex
+    cors_allow_credentials: bool = False
+    cors_allow_methods: str = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    cors_allow_headers: str = "Authorization,Content-Type,X-Request-ID"
+
     # External integrations (Module N)
     external_base_url: str = ""
     external_timeout_s: float = 3.0
@@ -42,3 +48,7 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
+
+
+def parse_csv(value: str) -> list[str]:
+    return [v.strip() for v in value.split(",") if v.strip()]
