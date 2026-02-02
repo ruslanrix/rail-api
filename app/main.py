@@ -14,6 +14,7 @@ from app.observability import (
     metrics,
     now,
     request_id_var,
+    obs_enabled,
 )
 
 settings = get_settings()
@@ -47,7 +48,8 @@ async def request_id_and_timing(request: Request, call_next):
             duration_s=duration_s,
         )
         logger.info(
-            "request complete method=%s path=%s status=%s duration_ms=%.2f",
+            "request complete request_id=%s method=%s path=%s status=%s duration_ms=%.2f",
+            request_id,
             request.method,
             request.url.path,
             status_code,
@@ -71,6 +73,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):  # pragm
 
 @app.get("/metrics", response_class=PlainTextResponse)
 def metrics_endpoint():
+    if not obs_enabled():
+        raise HTTPException(status_code=404, detail="Metrics disabled")
     return PlainTextResponse(
         metrics.render_prometheus(),
         media_type="text/plain; version=0.0.4",
