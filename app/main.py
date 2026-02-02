@@ -5,6 +5,7 @@ import logging
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.settings import get_settings
 from app.api.routes import router
@@ -22,6 +23,22 @@ app = FastAPI(title=settings.app_name)
 
 configure_logging()
 logger = logging.getLogger(__name__)
+
+allow_origins = []
+if getattr(settings, "cors_allow_origins", ""):
+    allow_origins = [o for o in settings.cors_allow_origins.split(",") if o.strip()]
+    allow_origins = [o.strip() for o in allow_origins]
+
+if allow_origins or getattr(settings, "cors_allow_origin_regex", ""):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allow_origins,
+        allow_origin_regex=getattr(settings, "cors_allow_origin_regex", None) or None,
+        allow_credentials=getattr(settings, "cors_allow_credentials", False),
+        allow_methods=[m.strip() for m in settings.cors_allow_methods.split(",")],
+        allow_headers=[h.strip() for h in settings.cors_allow_headers.split(",")],
+        max_age=600,
+    )
 
 
 @app.middleware("http")
